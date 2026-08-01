@@ -86,45 +86,67 @@ document.addEventListener('DOMContentLoaded', () => {
         let valuesMap = new Map();
         
         for (let line of secondaryLines) {
-            // Updated regex to capture decimal numbers
-            let match = line.match(/"([^"]+)"(?:[^\d]*)(\d+(?:\.\d+)?)/);
+            // Capture everything after the quotes to support multiple numbers
+            let match = line.match(/"([^"]+)"(.*)/);
             if (match) {
-                let numVal = parseFloat(match[2]).toFixed(6);
-                valuesMap.set(match[1], { value: numVal, originalValue: match[2], sourceLine: line });
+                let restOfLine = match[2];
+                valuesMap.set(match[1], { value: restOfLine, originalValue: restOfLine, sourceLine: line });
             }
         }
 
         let principalLines = textPrincipal.split('\n');
         perfilChanges = [];
+        let foundNames = new Set();
         
         for (let i = 0; i < principalLines.length; i++) {
             let line = principalLines[i];
             let match = line.match(/"([^"]+)"/);
             if (match && valuesMap.has(match[1])) {
                 let name = match[1];
+                foundNames.add(name);
                 let secondaryData = valuesMap.get(name);
                 let newValue = secondaryData.value;
                 let secondaryLine = secondaryData.sourceLine;
                 
                 let oldValue = "";
-                // Updated regex to capture decimal numbers
-                let oldMatch = line.match(/"[^"]+"[^\d]*(\d+(?:\.\d+)?)/);
+                // Capture everything after the quotes
+                let oldMatch = line.match(/"([^"]+)"(.*)/);
                 if (oldMatch) {
-                    oldValue = oldMatch[1];
+                    oldValue = oldMatch[2];
                 }
                 
-                // Only register the change if the old value is strictly different from the new 6-decimal formatted value
-                if (oldValue !== newValue) {
+                // Compare arrays of floats to avoid false positives due to spacing
+                let isDifferent = false;
+                let oldNums = oldValue.trim().split(/\s+/).map(n => parseFloat(n.replace(',', '.')));
+                let newNums = newValue.trim().split(/\s+/).map(n => parseFloat(n.replace(',', '.')));
+                
+                if (oldNums.length !== newNums.length) {
+                    isDifferent = true;
+                } else {
+                    for (let j = 0; j < oldNums.length; j++) {
+                        if (Math.abs(oldNums[j] - newNums[j]) > 0.000001) {
+                            isDifferent = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (oldNums.some(isNaN) || newNums.some(isNaN)) {
+                    isDifferent = (oldValue.trim() !== newValue.trim());
+                }
+
+                // Only register the change if there are real differences
+                if (isDifferent) {
                     // Create highlighted versions for preview
                     let highlightedPrincipal = line;
                     if (oldMatch) {
-                        highlightedPrincipal = line.replace(/("[^"]+")([^\d]*)(\d+(?:\.\d+)?)/, (m, p1, p2, p3) => {
-                            return p1 + p2 + `<mark style="background: rgba(239, 68, 68, 0.4); color: white; padding: 0 4px; border-radius: 4px;">${p3}</mark>`;
+                        highlightedPrincipal = line.replace(/("[^"]+")(.*)/, (m, p1, p2) => {
+                            return p1 + `<mark style="background: rgba(239, 68, 68, 0.4); color: white; padding: 0 4px; border-radius: 4px;">${p2}</mark>`;
                         });
                     }
                     
-                    let highlightedSecondary = secondaryLine.replace(/("[^"]+")([^\d]*)(\d+(?:\.\d+)?)/, (m, p1, p2, p3) => {
-                        return p1 + p2 + `<mark style="background: rgba(16, 185, 129, 0.4); color: white; padding: 0 4px; border-radius: 4px;">${p3}</mark>`;
+                    let highlightedSecondary = secondaryLine.replace(/("[^"]+")(.*)/, (m, p1, p2) => {
+                        return p1 + `<mark style="background: rgba(16, 185, 129, 0.4); color: white; padding: 0 4px; border-radius: 4px;">${p2}</mark>`;
                     });
 
                     perfilChanges.push({
@@ -136,6 +158,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         secondaryLine: highlightedSecondary
                     });
                 }
+            }
+        }
+        
+        // Agregar elementos del secundario que no se encontraron en el principal
+        for (let [name, data] of valuesMap.entries()) {
+            if (!foundNames.has(name)) {
+                let highlightedSecondary = data.sourceLine.replace(/("[^"]+")(.*)/, (m, p1, p2) => {
+                    return p1 + `<mark style="background: rgba(59, 130, 246, 0.4); color: white; padding: 0 4px; border-radius: 4px;">${p2}</mark>`;
+                });
+
+                perfilChanges.push({
+                    isNew: true,
+                    name: name,
+                    oldValue: "(ninguno)",
+                    newValue: data.value,
+                    principalLine: `<span style="color: var(--text-muted); font-style: italic;">(No existía en el archivo principal - Se agregará al final)</span>`,
+                    secondaryLine: highlightedSecondary,
+                    sourceLine: data.sourceLine
+                });
             }
         }
         
@@ -162,11 +203,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         previewSection.classList.remove('hidden');
         
-        container.innerHTML = perfilChanges.map(change => `
+        container.innerHTML = perfilChanges.map(change => {
+            let badgeText = change.isNew ? '⭐ Nuevo' : `Línea Principal ${change.lineIndex + 1}`;
+            let badgeColor = change.isNew ? 'var(--primary)' : 'var(--text-muted)';
+            
+            return `
             <div class="error-item" style="border-left-color: var(--primary); display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; padding: 1rem;">
                 <div style="width: 100%; display: flex; justify-content: space-between;">
                     <code style="font-weight: bold; background: rgba(255,255,255,0.08); padding: 0.2rem 0.4rem; border-radius: 4px;">"${change.name}"</code>
-                    <span class="line-num" style="color: var(--text-muted); font-size: 0.85rem;">Línea Principal ${change.lineIndex + 1}</span>
+                    <span class="line-num" style="color: ${badgeColor}; font-size: 0.85rem; font-weight: ${change.isNew ? 'bold' : 'normal'};">${badgeText}</span>
                 </div>
                 
                 <div style="width: 100%; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
@@ -181,7 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     filePrincipal.addEventListener('change', (e) => {
@@ -223,14 +269,22 @@ document.addEventListener('DOMContentLoaded', () => {
             let count = 0;
             
             for (let change of perfilChanges) {
-                let line = principalLines[change.lineIndex];
-                let updatedLine = line.replace(/("[^"]+")([^\d]*)(\d+(?:\.\d+)?)/, (m, p1, p2, p3) => {
-                    return p1 + p2 + change.newValue;
-                });
-                
-                if (updatedLine !== line) {
-                    principalLines[change.lineIndex] = updatedLine;
+                if (change.isNew) {
+                    let updatedLine = change.sourceLine.replace(/("[^"]+")(.*)/, (m, p1, p2) => {
+                        return p1 + change.newValue;
+                    });
+                    principalLines.push(updatedLine);
                     count++;
+                } else {
+                    let line = principalLines[change.lineIndex];
+                    let updatedLine = line.replace(/("[^"]+")(.*)/, (m, p1, p2) => {
+                        return p1 + change.newValue;
+                    });
+                    
+                    if (updatedLine !== line) {
+                        principalLines[change.lineIndex] = updatedLine;
+                        count++;
+                    }
                 }
             }
 
