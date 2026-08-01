@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Color</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-background"></div>
+    
+    <div id="toast-container"></div>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h1 class="hero-title">NOVA<br><span class="gradient-text">COLOR</span></h1>
+            
+            <nav class="side-nav">
+                <button id="nav-limpieza" class="nav-btn active">Limpieza General</button>
+                <button id="nav-perfil" class="nav-btn">Perfil (Actualizar Valores)</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="hero-header">
+                <p class="hero-subtitle">
+                    Explorando nuevas fronteras en la limpieza y optimización<br>
+                    de bases de datos e inventarios.
+                </p>
+            </header>
+
+            <!-- VISTA LIMPIEZA GENERAL -->
+            <div id="view-limpieza">
+                <div class="upload-section glass-card">
+                <label for="fileInput" class="upload-area" id="drop-zone">
+                    <div class="upload-icon">📄</div>
+                    <p>Haz clic o arrastra tu archivo TXT aquí</p>
+                    <input type="file" id="fileInput" accept=".txt" hidden>
+                </label>
+                <div id="file-info" class="hidden">
+                    <span id="file-name">archivo.txt</span>
+                </div>
+            </div>
+
+            <div class="dashboard hidden" id="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card error">
+                        <h3>Duplicados Encontrados</h3>
+                        <div class="stat-value" id="dup-count">0</div>
+                        <div class="stat-footer">Histórico corregidos: <span id="total-dups-fixed">0</span></div>
+                    </div>
+                    <div class="stat-card warning">
+                        <h3>Paréntesis (Num) Encontrados</h3>
+                        <div class="stat-value" id="paren-count">0</div>
+                        <div class="stat-footer">Histórico corregidos: <span id="total-parens-fixed">0</span></div>
+                    </div>
+                    <div class="stat-card info">
+                        <h3>Nombres Identificados</h3>
+                        <div class="stat-value" id="names-count">0</div>
+                        <div class="stat-footer">Total en el archivo</div>
+                    </div>
+                    <div class="stat-card error" style="border-bottom-color: #f97316;">
+                        <h3 style="color: #fdba74;">NKs Faltantes</h3>
+                        <div class="stat-value" id="missing-nk-count" style="color: #f97316;">0</div>
+                        <div class="stat-footer">No coinciden en la lista Master</div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="btn-unificar" class="btn primary">
+                        <span class="icon">🔍</span> Unificar Duplicados
+                    </button>
+                    <button id="btn-corregir" class="btn secondary">
+                        <span class="icon">✨</span> Corregir Paréntesis
+                    </button>
+                    <button id="btn-exportar" class="btn success" disabled>
+                        <span class="icon">💾</span> Exportar TXT
+                    </button>
+                </div>
+
+                <div class="extraction-section glass-card" style="margin-bottom: 2rem;">
+                    <h2>Separar y Extraer Nombres</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                        Aísla los nombres de la sintaxis del archivo y opcionalmente sepáralos en códigos o descripciones.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="chk-split-separator">
+                            <span class="checkmark"></span>
+                            Separar por guion/diagonal (ej. <code>"W885WK - RIBS"</code> &rarr; <code>"W885WK"</code>)
+                        </label>
+                        
+                        <div class="radio-group" id="split-part-group" style="display: none; padding-left: 2rem; border-left: 2px solid var(--glass-border); margin-left: 0.5rem;">
+                            <label class="radio-container">
+                                <input type="radio" name="split-part" value="left" checked>
+                                <span class="radiomark"></span>
+                                Conservar Código / Izquierda (ej. <code>"W885WK"</code>)
+                            </label>
+                            <label class="radio-container" style="margin-top: 0.5rem;">
+                                <input type="radio" name="split-part" value="right">
+                                <span class="radiomark"></span>
+                                Conservar Descripción / Derecha (ej. <code>"RIBS"</code>)
+                            </label>
+                        </div>
+
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="chk-keep-quotes">
+                            <span class="checkmark"></span>
+                            Mantener comillas dobles (ej. <code>"W885WK"</code> en lugar de <code>W885WK</code>)
+                        </label>
+                    </div>
+                    
+                    <div class="actions" style="margin-top: 1.5rem; margin-bottom: 0;">
+                        <button id="btn-extraer" class="btn primary" style="max-width: 300px;">
+                            <span class="icon">✂️</span> Separar y Limpiar Archivo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="extraction-section glass-card" style="margin-bottom: 2rem;">
+                    <h2>Separar NK</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem;">
+                        Busca códigos NK específicos en cada nombre y permite recortar el texto según la opción que elijas. Si no encuentra coincidencias, el nombre se mantiene intacto.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label for="txt-nk-list" style="font-size: 0.95rem; font-weight: 500; color: var(--text-main);">
+                                Lista de Códigos NK (NK's Master cargada por defecto):
+                            </label>
+                            <button id="btn-cargar-nk-master" class="btn secondary" style="min-width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem; height: auto; margin: 0;">
+                                🔄 Cargar Master
+                            </button>
+                        </div>
+                        <textarea id="txt-nk-list" class="glass-textarea" placeholder="Lista de códigos..." rows="6">W887WK
+W885WK
+W507WK
+RW07WK
+T46843
+NK595353 B
+NK595353
+T42043
+T36943
+RW20WK
+NK729718
+NK728788
+NK1022685 15NA
+NK726466 15NA
+NK726466 15N
+NK726466 89L
+NK726466 Pinstripes
+NK726466 WGREY
+NK726466 WGRY
+NK726466WGREY
+10A WHITE STANDARD
+NK723141M
+NK-719001
+NK717270
+NK711077
+NK711075
+NK710145
+NK710142
+NK700749
+NK700747
+NK700742
+NK675426
+NK658847
+NK675426B
+NK652165 4EY
+NK652165 EY
+NK652165 65N
+NK652165 89L
+NK652165 15NA
+NK652165 15N
+NK652165 4EV
+NK652165 69W
+NK612559
+NK584374
+579M
+NK579M
+NK50615M
+NK50276M
+NK50254
+NK1043135M
+NK1042527
+NK1035122
+NK1033023M
+NK1033023
+NK1028203
+NK1022685 69W
+NK1022685 WG
+NK1022685 65N
+NK1022685 89L
+NK1022685 4EV
+NK1022685 VALOR
+NK1022684
+NK1022170M
+NK1013759 WGRY
+NK1013759 WGY
+NK1013759 4EY
+NK1013759 65N
+NK1013759 89L
+NK1022685  15NA
+NK1022685 15N
+NK1022685  15N
+NK1013759 4EV
+NK1013759 69W
+NK1006640
+NK1006639
+NK1006638 L
+NK1006638
+NK1006637
+NK-3537WK
+H3536M
+H3353
+H3319
+NK578M
+574WK
+574WB
+574WK P
+574WKP
+565WB S
+565WB
+4844-18
+3442-64
+NK700750
+RW47WK
+1997-18
+W160WK
+W561WK
+W536WK
+W213WK
+NK1023287
+NK-1012066M</textarea>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.25rem;">
+                        <label style="font-size: 0.95rem; font-weight: 500; color: var(--text-main);">
+                            ¿Qué deseas conservar al coincidir?
+                        </label>
+                        <div class="radio-group" style="padding-left: 0.5rem;">
+                            <label class="radio-container">
+                                <input type="radio" name="nk-part" value="complete" checked>
+                                <span class="radiomark"></span>
+                                Todo completo (desde NK a la derecha) (ej. <code>"NK-582214 MESH"</code>)
+                            </label>
+                            <label class="radio-container" style="margin-top: 0.5rem;">
+                                <input type="radio" name="nk-part" value="code">
+                                <span class="radiomark"></span>
+                                Solo el código NK (ej. <code>"NK-582214"</code>)
+                            </label>
+                            <label class="radio-container" style="margin-top: 0.5rem;">
+                                <input type="radio" name="nk-part" value="rest">
+                                <span class="radiomark"></span>
+                                Solo lo que queda a la derecha (ej. <code>"MESH"</code>)
+                            </label>
+                            <label class="radio-container" style="margin-top: 0.5rem;">
+                                <input type="radio" name="nk-part" value="remove">
+                                <span class="radiomark"></span>
+                                Eliminar el código NK (conservar restante del nombre) (ej. <code>"TELA AZUL MESH"</code>)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="actions" style="margin-top: 1.5rem; margin-bottom: 0;">
+                        <button id="btn-separar-nk" class="btn primary" style="max-width: 300px;">
+                            <span class="icon">✂️</span> Separar NK
+                        </button>
+                        <button id="btn-exportar-sin-nk" class="btn success" style="max-width: 300px;">
+                            <span class="icon">💾</span> Exportar sin NK
+                        </button>
+                    </div>
+                </div>
+
+                <div class="preview-section glass-card">
+                    <h2>Preview de Errores</h2>
+                    <div class="tabs">
+                        <button class="tab active" data-tab="dups">Duplicados (<span id="tab-dup-count">0</span>)</button>
+                        <button class="tab" data-tab="parens">Paréntesis (<span id="tab-paren-count">0</span>)</button>
+                        <button class="tab" data-tab="names">Nombres Extraídos (<span id="tab-names-count">0</span>)</button>
+                        <button class="tab" data-tab="missing">NK Faltantes (<span id="tab-missing-count">0</span>)</button>
+                    </div>
+                    <div class="tab-content">
+                        <div id="dups-list" class="error-list active"></div>
+                        <div id="parens-list" class="error-list"></div>
+                        <div id="names-list" class="error-list"></div>
+                        <div id="missing-list" class="error-list"></div>
+                    </div>
+                </div>
+            </div>
+            </div> <!-- Cierre de view-limpieza -->
+            
+            <!-- VISTA PERFIL -->
+            <div id="view-perfil" class="hidden">
+                <div class="glass-card" style="margin-bottom: 2rem;">
+                    <h2>Actualizar Valores (Perfil)</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                        Sube el archivo principal y el archivo secundario. Se actualizarán los valores numéricos del principal basándose en los nombres entre comillas del secundario.
+                    </p>
+                    
+                    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <label for="file-principal" class="upload-area" id="drop-principal" style="padding: 1.5rem;">
+                                <div class="upload-icon" style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+                                <p style="font-size: 0.9rem;">Archivo Principal</p>
+                                <input type="file" id="file-principal" accept=".txt" hidden>
+                            </label>
+                            <div id="info-principal" class="hidden" style="text-align: center; margin-top: 0.5rem; color: var(--success); font-size: 0.85rem;"></div>
+                        </div>
+                        
+                        <div style="flex: 1; min-width: 250px;">
+                            <label for="file-secundario" class="upload-area" id="drop-secundario" style="padding: 1.5rem;">
+                                <div class="upload-icon" style="font-size: 2rem; margin-bottom: 0.5rem;">📑</div>
+                                <p style="font-size: 0.9rem;">Archivo Secundario</p>
+                                <input type="file" id="file-secundario" accept=".txt" hidden>
+                            </label>
+                            <div id="info-secundario" class="hidden" style="text-align: center; margin-top: 0.5rem; color: var(--success); font-size: 0.85rem;"></div>
+                        </div>
+                    </div>
+
+                    <div id="perfil-preview-container" class="preview-section glass-card hidden" style="margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--glass-border);">
+                        <h2 style="font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary);">Vista Previa de Cambios</h2>
+                        <div style="max-height: 250px; overflow-y: auto; padding-right: 0.5rem;">
+                            <div id="perfil-preview-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <!-- list of changes goes here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="perfil-stats" class="hidden" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--glass-border); text-align: center;">
+                        <h3 style="color: var(--primary); font-size: 1.2rem; margin-bottom: 0.5rem;">Resultados de la Actualización</h3>
+                        <p style="font-size: 1.1rem;">Se actualizaron <strong id="perfil-update-count" style="color: var(--success); font-size: 1.5rem;">0</strong> registros.</p>
+                        
+                        <div style="margin-top: 1.5rem; display: flex; justify-content: center;">
+                            <button id="btn-procesar-perfil" class="btn primary" disabled>
+                                <span class="icon">🔄</span> Procesar y Actualizar
+                            </button>
+                            <button id="btn-exportar-perfil" class="btn success hidden" style="margin-left: 1rem;">
+                                <span class="icon">💾</span> Descargar Principal Actualizado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
