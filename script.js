@@ -718,6 +718,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300);
     });
 
+    // Reset App Logic
+    const btnResetApp = document.getElementById('btn-reset-app');
+    if (btnResetApp) {
+        btnResetApp.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que deseas limpiar todo y comenzar un nuevo proceso? Se perderán los archivos no guardados.')) {
+                window.location.reload();
+            }
+        });
+    }
+
     // Toggle split part settings when separator checkbox changes
     chkSplitSeparator.addEventListener('change', (e) => {
         if (e.target.checked) {
